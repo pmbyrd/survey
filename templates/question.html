@@ -12,7 +12,7 @@
     <form action="/answer" method="POST">
         <label for="choices">
             {% for choice in question.choices %}
-            <input type="radio" name="answer" value="{{ choice }}">
+            <input type="radio" name="response" value="{{ choice }}">
             {{choice}}
             {% endfor %}
         </label>

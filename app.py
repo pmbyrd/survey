@@ -1,5 +1,5 @@
 #import necessary methods and set up configs
-from flask import Flask, request, render_template, redirect, flash, url_for
+from flask import Flask, request, render_template, redirect, flash
 
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -9,64 +9,73 @@ app = Flask(__name__)
 
 
 app.config["SECRET_KEY"] = "not-so-secret-key"
-# app.config["DEBUG_TB_INTERCEPT_REDIRECTS"] = False
+app.config["DEBUG_TB_INTERCEPT_REDIRECTS"] = False
 debug = DebugToolbarExtension(app)
 
-#intialize a list to store the answers
+#initialize a list to store the answers
 responses = []
-#intialize survey to an easier to handle variable
+#initialize survey to an easier to handle variable
 survey = satisfaction_survey
 
+
+#Get the properties from the survey class, iintialize variables that are passed to the templates
 @app.route('/')
 def show_survey():
     """Shows the survey with instructions 
     and redirects the user to the next page"""
     title = survey.title
     instructions = survey.instructions
+    return render_template("survey-start.html", title = title, instructions = instructions)
 
-    return render_template("start.html", title = title, instructions = instructions)
 
 
-@app.route('/survey', methods=['POST'])
+#"""the "post" must match the form action"""
+@app.route('/start', methods=["POST"])
 def start_survey():
-    """Starts the survey with the first question"""
-    return redirect("/questions/0")
+    """Takes user to the survey questions"""
+    return redirect('/questions')
 
 
-@app.route('/questions/<int:q_id>')
-def show_question(q_id):
-    """Shows each question in the survey based of the 
-    its index in the questions attribute"""
-    question = survey.questions[q_id]
-    return render_template("questions.html", question=question, q_idx=q_id)
+#initialize the route for the survey.questions property
+#the question index needs to not be hard coded use the <int:> or else everythin is a string
+@app.route('/questions/<int:ques_id>')
+#pass the qid into the function so as the responses increase it can correspond
+def show_questions(ques_id):
+    """Shows user the survey questions form
+    with a button to proceed to the next question if the user 
+    has"""
+    if (responses is None):
+        return redirect("/")
+    #the survey.questions is user to control the survey, the logic is dictated around this object
+    if (len(responses) == len(survey.questions)):
+    #show thank you - using the questions route render different template without hardcoding
+        return redirect('/thank-you')
+    
+    if (len(responses) != ques_id):
+    #if user tries to access the questions out of order redirect to the response len
+        flash(f"Invalid access for that question: {ques_id} is out of bounds")       
+        return redirect(f'/questions/{len(responses)}')    
+    question = survey.questions[ques_id]
+    ques_id == len(responses)
+    return render_template("question.html", question=question, q_idx=ques_id)
 
-
-@app.route('/answers', methods=["POST"])
-def get_answers():
-    """Stores the users responses to the db"""
-    #a fake db
-    choice = request.form["answer"]
+#initialize the route for the POST request that will handle the answers and redirects
+@app.route('/answer', methods=["POST"])
+def handle_answers():
+    """Get's user's response and appends them to the responses and controls
+    the question order"""
+    #initialize variable to store in the responses
+    choice = request.form['response']
     responses.append(choice)
-    #to control the redirects they must match a number, after at question is 
-    # go to the next question if all questions go to thank you
-  
-    return redirect(f'/questions/{len(responses)}')
+    #proceed to the next question after a response
+    print(responses)
+    if (len(responses) == len(survey.questions)):
+    #show thank you - using the questions route render different template without hardcoding
+        return redirect('/thank-you')
+    else:
+        return redirect(f'/questions/{len(responses)}')
 
-
-@app.route('/thank_you')
-def show_thank_you():
-    """Shows the thank you page at the end of the survey"""
-    return render_template("thank_you.html")
-
-
-# #get the user input
-
-# #redirect to the next page
-
-# #flash message if not in order
-
-# #How to make it automatically preview the next question without hardcoding
-# #the questions are in a list so they can be accessed by its index
-# #need to not redirect immediately
-# #use len() to control the redirects and order of how questions can be handled
-# #I am essentially handling a click need to use conditional logic to control the order
+@app.route('/thank-you')
+def thank_you():
+    """Show's thank you page"""
+    return render_template("thank-you.html")
