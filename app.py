@@ -1,5 +1,5 @@
 #import necessary methods and set up configs
-from flask import Flask, request, render_template, redirect, flash
+from flask import Flask, request, render_template, redirect, flash, session
 
 from flask_debugtoolbar import DebugToolbarExtension
 
@@ -13,7 +13,14 @@ app.config["DEBUG_TB_INTERCEPT_REDIRECTS"] = False
 debug = DebugToolbarExtension(app)
 
 #initialize a list to store the answers
-responses = []
+# responses = []
+
+#for the sessions it must be initialized to string 
+# that matches the original variable name
+#set to a "constant" so that I know it will not change
+SESSION_RES = "responses"
+
+
 #initialize survey to an easier to handle variable
 survey = satisfaction_survey
 
@@ -30,10 +37,12 @@ def show_survey():
 
 
 #"""the "post" must match the form action"""
-@app.route('/start', methods=["POST"])
+@app.route('/start')
 def start_survey():
     """Takes user to the survey questions"""
-    return redirect('/questions')
+    #the session needs to commence when the survey starts
+    session[SESSION_RES] = []
+    return redirect('/questions/0')
 
 
 #initialize the route for the survey.questions property
@@ -44,9 +53,12 @@ def show_questions(ques_id):
     """Shows user the survey questions form
     with a button to proceed to the next question if the user 
     has"""
+    #intialize responses list so the prewritten logic is still valid
+    responses = session.get(SESSION_RES)
+
     if (responses is None):
         return redirect("/")
-    #the survey.questions is user to control the survey, the logic is dictated around this object
+    #the survey.questions is used to control the survey, the logic is dictated around this object
     if (len(responses) == len(survey.questions)):
     #show thank you - using the questions route render different template without hardcoding
         return redirect('/thank-you')
@@ -64,9 +76,15 @@ def show_questions(ques_id):
 def handle_answers():
     """Get's user's response and appends them to the responses and controls
     the question order"""
+
     #initialize variable to store in the responses
     choice = request.form['response']
+
+    #reintialize the original responses list as the session list
+    responses = session[SESSION_RES]
     responses.append(choice)
+    session[SESSION_RES] = responses
+
     #proceed to the next question after a response
     print(responses)
     if (len(responses) == len(survey.questions)):
